@@ -1,0 +1,5 @@
+[profile foo-test]
+expiration = 2018-04-23T13:45:43Z
+mfa_serial = arn:aws:iam::123:mfa/bob
+role_arn = arn:aws:iam::123:role/admin
+source_profile = default

@@ -1,0 +1,2 @@
+profile_name_prefix: foobar
+role_prefix: arn:aws:iam::000000000000:role/

@@ -1,0 +1,8 @@
+*.cov
+*.out
+*.test
+*.xml
+.coverage.out
+.tmp/
+/assume-role
+/vendor
