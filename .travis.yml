@@ -1,0 +1,13 @@
+language: go
+
+go:
+  - "1.10.x"
+
+before_install:
+  - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+
+install:
+  - make vendor
+
+script:
+  - make test
