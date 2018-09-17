@@ -32,6 +32,12 @@ var fooProfileWithMFA = &assumerole.ProfileConfiguration{
 	RoleSessionName: "bob",
 }
 
+var fooProfileWithoutMFA = &assumerole.ProfileConfiguration{
+	Expires:         fooCredentials.Expires,
+	RoleARN:         "arn:aws:iam::000000000000:role/testRole-fromassumedrole",
+	RoleSessionName: "bob-session",
+}
+
 type test struct {
 	AssumeRoleMain *assumerole.App
 	MockAWS        *mocks.MockAWSProvider
@@ -102,7 +108,7 @@ func TestAssumeRoleWithMFAFirstTime(t *testing.T) {
 
 	test.MockStdin.WriteString("123456" + "\n")
 
-	creds, err := test.AssumeRoleMain.AssumeRole(fooProfileWithMFA.RoleARN)
+	creds, err := test.AssumeRoleMain.AssumeRole(fooProfileWithMFA.RoleARN, "", false)
 	assert.NoError(t, err)
 	assert.Equal(t, fooCredentials, creds)
 }
@@ -121,7 +127,7 @@ func TestErrorNoMFADevices(t *testing.T) {
 
 	test.MockStdin.WriteString("123456" + "\n")
 
-	creds, err := test.AssumeRoleMain.AssumeRole(fooProfileWithMFA.RoleARN)
+	creds, err := test.AssumeRoleMain.AssumeRole(fooProfileWithMFA.RoleARN, "", false)
 	require.Error(t, err)
 
 	assert.Contains(t, err.Error(), "error trying to AssumeRole without MFA")
@@ -151,7 +157,7 @@ func TestMFAPromptInvalid(t *testing.T) {
 	test.MockStdin.WriteString("1\n")
 	test.MockStdin.WriteString("123456\n")
 
-	creds, err := test.AssumeRoleMain.AssumeRole("arn:aws:iam::000000000000:role/testRole")
+	creds, err := test.AssumeRoleMain.AssumeRole("arn:aws:iam::000000000000:role/testRole", "", false)
 	require.NoError(t, err)
 	require.Exactly(t, expectedCredentials, creds)
 
@@ -164,6 +170,32 @@ Select MFA device: Invalid input (not in range)
 [1]: foo
 [2]: bar
 Select MFA device: Enter MFA token: `, test.MockStderr.String())
+}
+
+func TestAssumeRoleWithAssumedRoleSuccess(t *testing.T) {
+	test := newTestAssumeRole(t)
+
+	test.MockAWS.EXPECT().AssumeRole(fooProfileWithoutMFA.RoleARN, "bob-session").Return(fooCredentials, nil)
+
+	test.MockAWSConfig.EXPECT().GetProfile("000000000000-testRole-fromassumedrole").Return(nil, nil)
+	test.MockAWSConfig.EXPECT().SetProfile("000000000000-testRole-fromassumedrole", fooProfileWithoutMFA).Return(nil)
+	test.MockAWSConfig.EXPECT().SetCredentials("000000000000-testRole-fromassumedrole", fooCredentials)
+
+	creds, err := test.AssumeRoleMain.AssumeRole(fooProfileWithoutMFA.RoleARN, "bob-session", true)
+	assert.NoError(t, err)
+	assert.Equal(t, fooCredentials, creds)
+}
+
+func TestAssumeRoleWithAssumedRoleDoesNotTryMFA(t *testing.T) {
+	test := newTestAssumeRole(t)
+
+	test.MockAWS.EXPECT().AssumeRole(fooProfileWithoutMFA.RoleARN, "bob-session").Return(nil, awsAccessDeniedError)
+
+	test.MockAWSConfig.EXPECT().GetProfile("000000000000-testRole-fromassumedrole").Return(nil, nil)
+
+	creds, err := test.AssumeRoleMain.AssumeRole(fooProfileWithoutMFA.RoleARN, "bob-session", true)
+	assert.Error(t, err)
+	assert.Nil(t, creds)
 }
 
 func TestConfigRolePrefix(t *testing.T) {
@@ -183,7 +215,7 @@ func TestConfigRolePrefix(t *testing.T) {
 
 	test.MockStdin.WriteString("123456" + "\n")
 
-	creds, err := test.AssumeRoleMain.AssumeRole("testRole")
+	creds, err := test.AssumeRoleMain.AssumeRole("testRole", "", false)
 	assert.NoError(t, err)
 	assert.Equal(t, fooCredentials, creds)
 }
@@ -256,8 +288,24 @@ func TestCredentialsExpiry(t *testing.T) {
 			test.MockAWSConfig.EXPECT().GetCredentials(gomock.Any()).Return(mockCreds, nil)
 		}
 
-		creds, err := test.AssumeRoleMain.AssumeRole("arn:aws:iam::123:role/testRole")
+		creds, err := test.AssumeRoleMain.AssumeRole("arn:aws:iam::123:role/testRole", "", false)
 		assert.NoError(t, err)
 		assert.Equal(t, mockCreds, creds)
 	}
+}
+
+func TestCurrentRoleIsAssumedROle(t *testing.T) {
+	test := newTestAssumeRole(t)
+
+	test.MockAWS.EXPECT().CurrentPrincipalARN().Return("arn:aws:iam::000000000000:user/bob", nil)
+
+	isAssumedRole, err := test.AssumeRoleMain.CurrentPrincipalIsAssumedRole()
+	assert.NoError(t, err)
+	assert.Equal(t, false, isAssumedRole)
+
+	test.MockAWS.EXPECT().CurrentPrincipalARN().Return("arn:aws:sts::000000000000:assumed-role/testRole/bob", nil)
+
+	isAssumedRole, err = test.AssumeRoleMain.CurrentPrincipalIsAssumedRole()
+	assert.NoError(t, err)
+	assert.Equal(t, true, isAssumedRole)
 }

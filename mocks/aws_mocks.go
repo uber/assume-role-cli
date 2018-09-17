@@ -5,8 +5,8 @@
 package mocks
 
 import (
-	assumerole "github.com/uber/assume-role"
 	gomock "github.com/golang/mock/gomock"
+	assumerole "github.com/uber/assume-role"
 	reflect "reflect"
 )
 
@@ -57,6 +57,19 @@ func (m *MockAWSProvider) AssumeRoleWithMFA(arg0, arg1, arg2, arg3 string) (*ass
 // AssumeRoleWithMFA indicates an expected call of AssumeRoleWithMFA
 func (mr *MockAWSProviderMockRecorder) AssumeRoleWithMFA(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AssumeRoleWithMFA", reflect.TypeOf((*MockAWSProvider)(nil).AssumeRoleWithMFA), arg0, arg1, arg2, arg3)
+}
+
+// CurrentPrincipalARN mocks base method
+func (m *MockAWSProvider) CurrentPrincipalARN() (string, error) {
+	ret := m.ctrl.Call(m, "CurrentPrincipalARN")
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CurrentPrincipalARN indicates an expected call of CurrentPrincipalARN
+func (mr *MockAWSProviderMockRecorder) CurrentPrincipalARN() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CurrentPrincipalARN", reflect.TypeOf((*MockAWSProvider)(nil).CurrentPrincipalARN))
 }
 
 // MFADevices mocks base method
