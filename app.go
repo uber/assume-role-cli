@@ -55,7 +55,12 @@ func NewApp(opts ...Option) (*App, error) {
 // AssumeRole takes a role name and calls AWS AssumeRole, returning a
 // set of temporary credentials. If MFA is required, it will prompt for
 // an MFA token interactively.
-func (app *App) AssumeRole(userRole, roleSessionName string, currentPrincipalIsAssumedRole bool) (*TemporaryCredentials, error) {
+func (app *App) AssumeRole(userRole, roleSessionName string) (*TemporaryCredentials, error) {
+	currentPrincipalIsAssumedRole, err := app.CurrentPrincipalIsAssumedRole()
+	if err != nil {
+		return nil, fmt.Errorf("ERROR while checking IAM principal type: %v", err)
+	}
+
 	if currentPrincipalIsAssumedRole && roleSessionName == "" {
 		return nil, errAssumedRoleNeedsSessionName
 	}
