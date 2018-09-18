@@ -12,7 +12,7 @@ type cliOpts struct {
 	// role is the role name or ARN that the user wants to assume
 	role string
 
-	// rolseSessionName overrides the default session name
+	// roleSessionName overrides the default session name
 	roleSessionName string
 }
 

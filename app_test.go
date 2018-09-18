@@ -294,7 +294,7 @@ func TestCredentialsExpiry(t *testing.T) {
 	}
 }
 
-func TestCurrentRoleIsAssumedROle(t *testing.T) {
+func TestCurrentRoleIsAssumedRole(t *testing.T) {
 	test := newTestAssumeRole(t)
 
 	test.MockAWS.EXPECT().CurrentPrincipalARN().Return("arn:aws:iam::000000000000:user/bob", nil)
