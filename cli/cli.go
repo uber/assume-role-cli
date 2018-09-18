@@ -102,7 +102,10 @@ func Main(stdin io.Reader, stdout io.Writer, stderr io.Writer, args []string) (e
 		return 1
 	}
 
-	credentials, err := app.AssumeRole(userOpts.role, userOpts.roleSessionName)
+	credentials, err := app.AssumeRole(assumerole.AssumeRoleParameters{
+		UserRole:        userOpts.role,
+		RoleSessionName: userOpts.roleSessionName,
+	})
 	if err != nil {
 		fmt.Fprintf(stderr, "ERROR: %v\n", err)
 		return 1

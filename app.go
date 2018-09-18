@@ -29,6 +29,16 @@ type App struct {
 	stdinReader *bufio.Reader
 }
 
+// AssumeRoleParameters are the parameters for the AssumeRole call
+type AssumeRoleParameters struct {
+	// UserRole is the ARN of the role to be assumed
+	UserRole string
+
+	// RoleSessionName is the session name for the AWS AssumeRole call; if it is
+	// the empty string, the current username will be used
+	RoleSessionName string
+}
+
 // used here and in tests
 var errAssumedRoleNeedsSessionName = errors.New("Validation error: missing role session name when current IAM principal is an assumed role")
 
@@ -55,17 +65,17 @@ func NewApp(opts ...Option) (*App, error) {
 // AssumeRole takes a role name and calls AWS AssumeRole, returning a
 // set of temporary credentials. If MFA is required, it will prompt for
 // an MFA token interactively.
-func (app *App) AssumeRole(userRole, roleSessionName string) (*TemporaryCredentials, error) {
+func (app *App) AssumeRole(options AssumeRoleParameters) (*TemporaryCredentials, error) {
 	currentPrincipalIsAssumedRole, err := app.CurrentPrincipalIsAssumedRole()
 	if err != nil {
 		return nil, fmt.Errorf("ERROR while checking IAM principal type: %v", err)
 	}
 
-	if currentPrincipalIsAssumedRole && roleSessionName == "" {
+	if currentPrincipalIsAssumedRole && options.RoleSessionName == "" {
 		return nil, errAssumedRoleNeedsSessionName
 	}
 
-	profileName, err := app.profileName(userRole)
+	profileName, err := app.profileName(options.UserRole)
 	if err != nil {
 		return nil, err
 	}
@@ -86,13 +96,13 @@ func (app *App) AssumeRole(userRole, roleSessionName string) (*TemporaryCredenti
 
 	// Get the full role ARN by combining the role prefix with the
 	// user-provided role name
-	roleARN := fmt.Sprintf("%s%s", app.config.RolePrefix, userRole)
+	roleARN := fmt.Sprintf("%s%s", app.config.RolePrefix, options.UserRole)
 	profile.RoleARN = roleARN
 
 	sessionName := profile.RoleSessionName
 	if sessionName == "" {
-		if roleSessionName != "" {
-			sessionName = roleSessionName
+		if options.RoleSessionName != "" {
+			sessionName = options.RoleSessionName
 		} else {
 			sessionName, err = app.aws.Username()
 			if err != nil {
