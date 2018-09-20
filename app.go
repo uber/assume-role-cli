@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -27,6 +28,19 @@ type App struct {
 
 	stdinReader *bufio.Reader
 }
+
+// AssumeRoleParameters are the parameters for the AssumeRole call
+type AssumeRoleParameters struct {
+	// UserRole is the ARN of the role to be assumed
+	UserRole string
+
+	// RoleSessionName is the session name for the AWS AssumeRole call; if it is
+	// the empty string, the current username will be used
+	RoleSessionName string
+}
+
+// used here and in tests
+var errAssumedRoleNeedsSessionName = errors.New("Validation error: missing role session name when current IAM principal is an assumed role")
 
 // NewApp creates a new App.
 func NewApp(opts ...Option) (*App, error) {
@@ -51,8 +65,17 @@ func NewApp(opts ...Option) (*App, error) {
 // AssumeRole takes a role name and calls AWS AssumeRole, returning a
 // set of temporary credentials. If MFA is required, it will prompt for
 // an MFA token interactively.
-func (app *App) AssumeRole(userRole string) (*TemporaryCredentials, error) {
-	profileName, err := app.profileName(userRole)
+func (app *App) AssumeRole(options AssumeRoleParameters) (*TemporaryCredentials, error) {
+	currentPrincipalIsAssumedRole, err := app.CurrentPrincipalIsAssumedRole()
+	if err != nil {
+		return nil, fmt.Errorf("ERROR while checking IAM principal type: %v", err)
+	}
+
+	if currentPrincipalIsAssumedRole && options.RoleSessionName == "" {
+		return nil, errAssumedRoleNeedsSessionName
+	}
+
+	profileName, err := app.profileName(options.UserRole)
 	if err != nil {
 		return nil, err
 	}
@@ -73,14 +96,18 @@ func (app *App) AssumeRole(userRole string) (*TemporaryCredentials, error) {
 
 	// Get the full role ARN by combining the role prefix with the
 	// user-provided role name
-	roleARN := fmt.Sprintf("%s%s", app.config.RolePrefix, userRole)
+	roleARN := fmt.Sprintf("%s%s", app.config.RolePrefix, options.UserRole)
 	profile.RoleARN = roleARN
 
 	sessionName := profile.RoleSessionName
 	if sessionName == "" {
-		sessionName, err = app.aws.Username()
-		if err != nil {
-			return nil, fmt.Errorf("unable to get username from AWS: %v", err)
+		if options.RoleSessionName != "" {
+			sessionName = options.RoleSessionName
+		} else {
+			sessionName, err = app.aws.Username()
+			if err != nil {
+				return nil, fmt.Errorf("unable to get username from AWS: %v", err)
+			}
 		}
 		profile.RoleSessionName = sessionName
 	}
@@ -112,6 +139,11 @@ func (app *App) AssumeRole(userRole string) (*TemporaryCredentials, error) {
 		return creds, nil
 	}
 
+	if currentPrincipalIsAssumedRole {
+		// assumed roles don't have an user name or MFA device associated with them
+		return nil, finalErr
+	}
+
 	// Get user's MFA device
 	mfaDeviceARN, err := app.mfaDevice()
 	if err != nil {
@@ -141,6 +173,15 @@ func (app *App) AssumeRole(userRole string) (*TemporaryCredentials, error) {
 	}
 
 	return creds, nil
+}
+
+// CurrentPrincipalIsAssumedRole returns true is the current principal is an assumed role.
+func (app *App) CurrentPrincipalIsAssumedRole() (bool, error) {
+	arn, err := app.aws.CurrentPrincipalARN()
+	if err != nil {
+		return false, err
+	}
+	return regexp.MatchString(`^arn:aws:sts::[0-9]+:assumed-role/`, arn)
 }
 
 // credentialsExpired returns a boolean indicating whether the credentials

@@ -28,6 +28,7 @@ type AWSProvider interface {
 	AssumeRoleWithMFA(roleARN string, sessionName string, mfaDeviceARN string, mfaToken string) (*TemporaryCredentials, error)
 	MFADevices() ([]string, error)
 	Username() (string, error)
+	CurrentPrincipalARN() (string, error)
 }
 
 // AWSConfigProvider is an interface to the AWS configuration (usually
@@ -143,6 +144,16 @@ func (a *AWS) Username() (string, error) {
 	}
 
 	return *res.User.UserName, nil
+}
+
+// CurrentPrincipalARN returns the ARN of the current IAM principal.
+func (a *AWS) CurrentPrincipalARN() (string, error) {
+	res, err := a.sts.GetCallerIdentity(&sts.GetCallerIdentityInput{})
+	if err != nil {
+		return "", err
+	}
+
+	return *res.Arn, nil
 }
 
 // AWSConfig represents the default AWS config files that exist on a system at

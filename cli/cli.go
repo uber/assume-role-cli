@@ -65,8 +65,9 @@ Usage:
   assume-role [options] <command> [args ...]
 
 Options:
-      --help          help for assume-role
-      --role string   Name of the role to assume
+      --help                       Help for assume-role
+      --role string                Name of the role to assume
+      --role-session-name string   Name of the session for the assumed role
 `)
 }
 
@@ -83,19 +84,28 @@ func Main(stdin io.Reader, stdout io.Writer, stderr io.Writer, args []string) (e
 		return 0
 	}
 
-	userOpts, err := parseOptions(args)
-	if err != nil {
-		fmt.Fprintf(stderr, "ERROR: %v\n", err)
-		return 1
-	}
-
 	app, err := loadApp(stdin, stdout, stderr)
 	if err != nil {
 		fmt.Fprintf(stderr, "ERROR: %v\n", err)
 		return 1
 	}
 
-	credentials, err := app.AssumeRole(userOpts.role)
+	currentPrincipalIsAssumedRole, err := app.CurrentPrincipalIsAssumedRole()
+	if err != nil {
+		fmt.Printf("ERROR while checking IAM principal type: %v", err)
+		return 1
+	}
+
+	userOpts, err := parseOptions(args, currentPrincipalIsAssumedRole)
+	if err != nil {
+		fmt.Fprintf(stderr, "ERROR: %v\n", err)
+		return 1
+	}
+
+	credentials, err := app.AssumeRole(assumerole.AssumeRoleParameters{
+		UserRole:        userOpts.role,
+		RoleSessionName: userOpts.roleSessionName,
+	})
 	if err != nil {
 		fmt.Fprintf(stderr, "ERROR: %v\n", err)
 		return 1

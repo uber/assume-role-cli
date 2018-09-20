@@ -11,6 +11,9 @@ type cliOpts struct {
 
 	// role is the role name or ARN that the user wants to assume
 	role string
+
+	// roleSessionName overrides the default session name
+	roleSessionName string
 }
 
 // argumentList is a special slice of strings that includes helpers for
@@ -19,6 +22,7 @@ type argumentList []string
 
 // used both here and in tests
 var errNoRole = errors.New("Missing required argument: --role")
+var errAssumedRoleNeedsSessionName = errors.New("Missing required argument: --role-session-name when current IAM principal is an assumed role")
 
 // Next returns the arg from the beginning of the argument list and
 // removes it from the list.
@@ -36,7 +40,7 @@ func (a *argumentList) Next() string {
 	return next
 }
 
-func parseOptions(args argumentList) (*cliOpts, error) {
+func parseOptions(args argumentList, currentPrincipalIsAssumedRole bool) (*cliOpts, error) {
 	opts := &cliOpts{}
 
 ArgsLoop:
@@ -45,6 +49,9 @@ ArgsLoop:
 
 		case "--role":
 			opts.role = args.Next()
+
+		case "--role-session-name":
+			opts.roleSessionName = args.Next()
 
 		case "--":
 			// Stop parsing and add remaining args to opts.args
@@ -61,6 +68,9 @@ ArgsLoop:
 
 	if opts.role == "" {
 		return opts, errNoRole
+	}
+	if opts.roleSessionName == "" && currentPrincipalIsAssumedRole {
+		return opts, errAssumedRoleNeedsSessionName
 	}
 
 	return opts, nil
