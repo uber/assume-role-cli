@@ -9,7 +9,7 @@ import (
 const testRole = "arn:aws:iam::675470192105:role/test_assume-role"
 
 func TestParseOptionsCommonCase(t *testing.T) {
-	cliOpts, err := parseOptions([]string{"--role", testRole, "ls", "-l"}, false)
+	cliOpts, err := parseOptions([]string{"--role", testRole, "ls", "-l"})
 	assert.NoError(t, err)
 	assert.Equal(t, testRole, cliOpts.role)
 	assert.Equal(t, "", cliOpts.roleSessionName)
@@ -17,7 +17,7 @@ func TestParseOptionsCommonCase(t *testing.T) {
 }
 
 func TestParseOptionsSessionName(t *testing.T) {
-	cliOpts, err := parseOptions([]string{"--role", testRole, "--role-session-name", "test-session-name", "ls", "-l"}, false)
+	cliOpts, err := parseOptions([]string{"--role", testRole, "--role-session-name", "test-session-name", "ls", "-l"})
 	assert.NoError(t, err)
 	assert.Equal(t, testRole, cliOpts.role)
 	assert.Equal(t, "test-session-name", cliOpts.roleSessionName)
@@ -25,7 +25,7 @@ func TestParseOptionsSessionName(t *testing.T) {
 }
 
 func TestParseOptionsDoubleDash(t *testing.T) {
-	cliOpts, err := parseOptions([]string{"--role", testRole, "--", "ls", "-l"}, false)
+	cliOpts, err := parseOptions([]string{"--role", testRole, "--", "ls", "-l"})
 	assert.NoError(t, err)
 	assert.Equal(t, testRole, cliOpts.role)
 	assert.Equal(t, "", cliOpts.roleSessionName)
@@ -33,13 +33,7 @@ func TestParseOptionsDoubleDash(t *testing.T) {
 }
 
 func TestParseOptionsNoRole(t *testing.T) {
-	_, err := parseOptions([]string{"ls", "-l"}, false)
+	_, err := parseOptions([]string{"ls", "-l"})
 	assert.Error(t, err)
 	assert.Equal(t, errNoRole, err)
-}
-
-func TestParseOptionsNoRoleSessionName(t *testing.T) {
-	_, err := parseOptions([]string{"--role", testRole, "ls", "-l"}, true)
-	assert.Error(t, err)
-	assert.Equal(t, errAssumedRoleNeedsSessionName, err)
 }
