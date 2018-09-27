@@ -66,15 +66,6 @@ func NewApp(opts ...Option) (*App, error) {
 // set of temporary credentials. If MFA is required, it will prompt for
 // an MFA token interactively.
 func (app *App) AssumeRole(options AssumeRoleParameters) (*TemporaryCredentials, error) {
-	currentPrincipalIsAssumedRole, err := app.CurrentPrincipalIsAssumedRole()
-	if err != nil {
-		return nil, fmt.Errorf("ERROR while checking IAM principal type: %v", err)
-	}
-
-	if currentPrincipalIsAssumedRole && options.RoleSessionName == "" {
-		return nil, errAssumedRoleNeedsSessionName
-	}
-
 	profileName, err := app.profileName(options.UserRole)
 	if err != nil {
 		return nil, err
@@ -86,6 +77,11 @@ func (app *App) AssumeRole(options AssumeRoleParameters) (*TemporaryCredentials,
 	}
 	if profile == nil {
 		profile = &ProfileConfiguration{}
+	}
+
+	currentPrincipalIsAssumedRole, err := app.CurrentPrincipalIsAssumedRole()
+	if err != nil {
+		return nil, fmt.Errorf("unable to check IAM principal type: %v", err)
 	}
 
 	// If the credentials from a previous session are still valid,
@@ -104,6 +100,9 @@ func (app *App) AssumeRole(options AssumeRoleParameters) (*TemporaryCredentials,
 		if options.RoleSessionName != "" {
 			sessionName = options.RoleSessionName
 		} else {
+			if currentPrincipalIsAssumedRole {
+				return nil, errAssumedRoleNeedsSessionName
+			}
 			sessionName, err = app.aws.Username()
 			if err != nil {
 				return nil, fmt.Errorf("unable to get username from AWS: %v", err)

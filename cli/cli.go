@@ -90,13 +90,7 @@ func Main(stdin io.Reader, stdout io.Writer, stderr io.Writer, args []string) (e
 		return 1
 	}
 
-	currentPrincipalIsAssumedRole, err := app.CurrentPrincipalIsAssumedRole()
-	if err != nil {
-		fmt.Printf("ERROR while checking IAM principal type: %v", err)
-		return 1
-	}
-
-	userOpts, err := parseOptions(args, currentPrincipalIsAssumedRole)
+	userOpts, err := parseOptions(args)
 	if err != nil {
 		fmt.Fprintf(stderr, "ERROR: %v\n", err)
 		return 1
