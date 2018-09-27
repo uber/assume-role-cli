@@ -81,7 +81,7 @@ func (app *App) AssumeRole(options AssumeRoleParameters) (*TemporaryCredentials,
 
 	currentPrincipalIsAssumedRole, err := app.CurrentPrincipalIsAssumedRole()
 	if err != nil {
-		return nil, fmt.Errorf("ERROR while checking IAM principal type: %v", err)
+		return nil, fmt.Errorf("unable to check IAM principal type: %v", err)
 	}
 
 	// If the credentials from a previous session are still valid,
