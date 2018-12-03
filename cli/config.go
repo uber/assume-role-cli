@@ -22,11 +22,19 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 )
 
+const configFile = "assume-role.yaml"
+const userPath = ".aws"
+const systemPath = "/etc"
+
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return !os.IsNotExist(err)
 }
 
+// findConfigFile returns the path of the config file to be used, with precedence:
+// 1. Local to project
+// 2. Local to user (in ~/.aws DIR)
+// 3. System wide
 func findConfigFile() (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -34,7 +42,7 @@ func findConfigFile() (string, error) {
 	}
 
 	for _, path := range searchPaths(wd) {
-		configFile := filepath.Join(path, "assume-role.yaml")
+		configFile := filepath.Join(path, configFile)
 		if fileExists(configFile) {
 			return configFile, nil
 		}
@@ -45,9 +53,14 @@ func findConfigFile() (string, error) {
 		return "", err
 	}
 
-	configFile := filepath.Join(home, ".aws", "assume-role.yaml")
-	if fileExists(configFile) {
+	userConfigFile := filepath.Join(home, userPath, configFile)
+	if fileExists(userConfigFile) {
 		return configFile, nil
+	}
+
+	systemConfigFile := filepath.Join(systemPath, configFile)
+	if fileExists(systemConfigFile) {
+		return systemConfigFile, nil
 	}
 
 	return "", nil
@@ -65,4 +78,5 @@ func searchPaths(basePath string) (paths []string) {
 	paths = append(paths, "/")
 
 	return paths
+
 }
