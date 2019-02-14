@@ -85,7 +85,6 @@ func copyFilesToTempDir(src string) (string, error) {
 func makeFixtureDir(t *testing.T) string {
 	fixtureDir, err := ioutil.TempDir("", "")
 	require.NoError(t, err)
-	defer os.RemoveAll(fixtureDir)
 	return fixtureDir
 }
 
