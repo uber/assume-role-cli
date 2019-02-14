@@ -131,16 +131,6 @@ func execTest(t *testing.T, opts execTestOpts) *execResult {
 
 	exitCode := cli.Main(stdin, stdout, stderr, opts.args)
 
-	writtenCredentialFile, err := os.Stat(filepath.Join(fixtureDir, "aws/credentials"))
-	require.NoError(t, err)
-
-	writtenConfigFile, err := os.Stat(filepath.Join(fixtureDir, "aws/config"))
-	require.NoError(t, err)
-
-	// Config/credential files should have been written to
-	assert.NotZero(t, writtenConfigFile.Size())
-	assert.NotZero(t, writtenCredentialFile.Size())
-
 	return &execResult{
 		ExitCode: exitCode,
 		Stdout:   stdout,
@@ -253,6 +243,17 @@ func TestCredentialsCached(t *testing.T) {
 
 	// Credentials should match because they were cached the first time
 	assert.Equal(t, a.Stdout.String(), b.Stdout.String())
+
+	writtenCredentialFile, err := os.Stat(filepath.Join(fixtureDir, "aws/credentials"))
+	require.NoError(t, err)
+
+	writtenConfigFile, err := os.Stat(filepath.Join(fixtureDir, "aws/config"))
+	require.NoError(t, err)
+
+	// Config/credential files should have been written to
+	assert.NotZero(t, writtenConfigFile.Size())
+	assert.NotZero(t, writtenCredentialFile.Size())
+
 }
 
 func TestCredentialsCachedForceRefresh(t *testing.T) {
@@ -281,13 +282,27 @@ func TestCredentialsCachedForceRefresh(t *testing.T) {
 	require.Zero(t, b.ExitCode)
 
 	// Credentials not match because they were force refreshed
-	assert.Equal(t, a.Stdout.String(), b.Stdout.String())
+	assert.NotEqual(t, a.Stdout.String(), b.Stdout.String())
+
+	writtenCredentialFile, err := os.Stat(filepath.Join(fixtureDir, "aws/credentials"))
+	require.NoError(t, err)
+
+	writtenConfigFile, err := os.Stat(filepath.Join(fixtureDir, "aws/config"))
+	require.NoError(t, err)
+
+	// Config/credential files should have been written to
+	assert.NotZero(t, writtenConfigFile.Size())
+	assert.NotZero(t, writtenCredentialFile.Size())
 }
 
 func TestConfig(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test due to -short flag")
 	}
+
+	fixtureDir, err := copyFilesToTempDir("fixtures/test-config")
+	require.NoError(t, err)
+	defer os.RemoveAll(fixtureDir)
 
 	result := execTest(t, execTestOpts{
 		args:     []string{"--role", "test_assume-role"},
