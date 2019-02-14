@@ -305,8 +305,9 @@ func TestConfig(t *testing.T) {
 	defer os.RemoveAll(fixtureDir)
 
 	result := execTest(t, execTestOpts{
-		args:     []string{"--role", "test_assume-role"},
-		testType: WITHOUT_MFA,
+		args:       []string{"--role", "test_assume-role"},
+		fixtureDir: fixtureDir,
+		testType:   WITHOUT_MFA,
 	})
 	assert.Empty(t, result.Stderr.String())
 	assert.Zero(t, result.ExitCode)

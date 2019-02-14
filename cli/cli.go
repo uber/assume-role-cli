@@ -115,6 +115,7 @@ func Main(stdin io.Reader, stdout io.Writer, stderr io.Writer, args []string) (e
 	}
 
 	credentials, err := app.AssumeRole(assumerole.Parameters{
+		ForceRefresh:    userOpts.forceRefresh,
 		UserRole:        userOpts.role,
 		RoleSessionName: userOpts.roleSessionName,
 	})
