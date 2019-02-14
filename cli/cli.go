@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// Package cli is reponsible for cli interaction
 package cli
 
 import (
@@ -22,7 +24,7 @@ import (
 	"os/exec"
 	"syscall"
 
-	"github.com/uber/assume-role-cli"
+	assumerole "github.com/uber/assume-role-cli"
 )
 
 // credentialsToEnv takes credentials and outputs them as a list of environment
@@ -81,6 +83,7 @@ Usage:
 
 Options:
       --help                       Help for assume-role
+	  --force-refresh              Forces credentials refresh irrespective of their expiry
       --role string                Name of the role to assume
       --role-session-name string   Name of the session for the assumed role
 `)
@@ -111,7 +114,7 @@ func Main(stdin io.Reader, stdout io.Writer, stderr io.Writer, args []string) (e
 		return 1
 	}
 
-	credentials, err := app.AssumeRole(assumerole.AssumeRoleParameters{
+	credentials, err := app.AssumeRole(assumerole.Parameters{
 		UserRole:        userOpts.role,
 		RoleSessionName: userOpts.roleSessionName,
 	})

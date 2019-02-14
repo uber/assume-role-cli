@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// Package assumerole contains main application logic
 package assumerole
 
 import (
@@ -44,14 +46,17 @@ type App struct {
 	stdinReader *bufio.Reader
 }
 
-// AssumeRoleParameters are the parameters for the AssumeRole call
-type AssumeRoleParameters struct {
+// Parameters are the parameters for the AssumeRole call
+type Parameters struct {
 	// UserRole is the ARN of the role to be assumed
 	UserRole string
 
 	// RoleSessionName is the session name for the AWS AssumeRole call; if it is
 	// the empty string, the current username will be used
 	RoleSessionName string
+
+	// Force refresh forces credential refresh
+	ForceRefresh bool
 }
 
 // used here and in tests
@@ -80,7 +85,7 @@ func NewApp(opts ...Option) (*App, error) {
 // AssumeRole takes a role name and calls AWS AssumeRole, returning a
 // set of temporary credentials. If MFA is required, it will prompt for
 // an MFA token interactively.
-func (app *App) AssumeRole(options AssumeRoleParameters) (*TemporaryCredentials, error) {
+func (app *App) AssumeRole(options Parameters) (*TemporaryCredentials, error) {
 	profileName, err := app.profileName(options.UserRole)
 	if err != nil {
 		return nil, err
@@ -99,9 +104,9 @@ func (app *App) AssumeRole(options AssumeRoleParameters) (*TemporaryCredentials,
 		return nil, fmt.Errorf("unable to check IAM principal type: %v", err)
 	}
 
-	// If the credentials from a previous session are still valid,
-	// return those
-	if !app.credentialsExpired(profile.Expires) {
+	// If force refresh was requested, or the credentials from a previous session
+	// are still valid return those
+	if !app.credentialsExpired(profile.Expires) && !options.ForceRefresh {
 		return app.awsConfig.GetCredentials(profileName)
 	}
 

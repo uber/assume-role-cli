@@ -13,9 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// Package cli is reponsible for cli interaction
 package cli
 
-import "errors"
+import (
+	"errors"
+)
 
 // cliOpts are the available options for the assume-role CLI.
 type cliOpts struct {
@@ -29,6 +33,9 @@ type cliOpts struct {
 
 	// roleSessionName overrides the default session name
 	roleSessionName string
+
+	// forceRefresh causes credentials to be refreshed irrespective of the expiry
+	forceRefresh bool
 }
 
 // argumentList is a special slice of strings that includes helpers for
@@ -60,6 +67,9 @@ func parseOptions(args argumentList) (*cliOpts, error) {
 ArgsLoop:
 	for len(args) > 0 {
 		switch arg := args.Next(); arg {
+
+		case "--force-refresh":
+			opts.forceRefresh = true
 
 		case "--role":
 			opts.role = args.Next()
