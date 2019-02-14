@@ -55,8 +55,11 @@ type execTestOpts struct {
 	// Args to send to the program for the test.
 	args []string
 	// String value for stdin for the test.
-	input    string
+	input string
+	// with or without MFA
 	testType testType
+	// if not passed in, create a new one
+	fixtureDir string
 }
 
 type execResult struct {
@@ -77,6 +80,13 @@ func copyFilesToTempDir(src string) (string, error) {
 	}
 
 	return filepath.Join(tmpdir, filepath.Base(src)), nil
+}
+
+func makeFixtureDir(t *testing.T) string {
+	fixtureDir, err := ioutil.TempDir("", "")
+	require.NoError(t, err)
+	defer os.RemoveAll(fixtureDir)
+	return fixtureDir
 }
 
 func execTest(t *testing.T, opts execTestOpts) *execResult {
@@ -100,9 +110,11 @@ func execTest(t *testing.T, opts execTestOpts) *execResult {
 		os.Setenv(key, val)
 	}
 
-	fixtureDir, err := ioutil.TempDir("", "")
-	require.NoError(t, err)
-	defer os.RemoveAll(fixtureDir)
+	fixtureDir := opts.fixtureDir
+
+	if fixtureDir == "" {
+		fixtureDir = makeFixtureDir(t)
+	}
 
 	os.Setenv("AWS_CONFIG_FILE", filepath.Join(fixtureDir, "aws/config"))
 	os.Setenv("AWS_SHARED_CREDENTIALS_FILE", filepath.Join(fixtureDir, "aws/credentials"))
@@ -220,18 +232,22 @@ func TestCredentialsCached(t *testing.T) {
 		t.Skip("skipping integration test due to -short flag")
 	}
 
+	fixtureDir := makeFixtureDir(t)
+
 	// Do the first AssumeRole
 	a := execTest(t, execTestOpts{
-		args:     []string{"--role", "arn:aws:iam::675470192105:role/test_assume-role"},
-		testType: WITHOUT_MFA,
+		args:       []string{"--role", "arn:aws:iam::675470192105:role/test_assume-role"},
+		fixtureDir: fixtureDir,
+		testType:   WITHOUT_MFA,
 	})
 	require.Empty(t, a.Stderr.String())
 	require.Zero(t, a.ExitCode)
 
 	// Do the second AssumeRole
 	b := execTest(t, execTestOpts{
-		args:     []string{"--role", "arn:aws:iam::675470192105:role/test_assume-role"},
-		testType: WITHOUT_MFA,
+		args:       []string{"--role", "arn:aws:iam::675470192105:role/test_assume-role"},
+		fixtureDir: fixtureDir,
+		testType:   WITHOUT_MFA,
 	})
 	require.Empty(t, b.Stderr.String())
 	require.Zero(t, b.ExitCode)
@@ -245,18 +261,22 @@ func TestCredentialsCachedForceRefresh(t *testing.T) {
 		t.Skip("skipping integration test due to -short flag")
 	}
 
+	fixtureDir := makeFixtureDir(t)
+
 	// Do the first AssumeRole
 	a := execTest(t, execTestOpts{
-		args:     []string{"--role", "arn:aws:iam::675470192105:role/test_assume-role"},
-		testType: WITHOUT_MFA,
+		args:       []string{"--role", "arn:aws:iam::675470192105:role/test_assume-role"},
+		fixtureDir: fixtureDir,
+		testType:   WITHOUT_MFA,
 	})
 	require.Empty(t, a.Stderr.String())
 	require.Zero(t, a.ExitCode)
 
 	// Do the second AssumeRole
 	b := execTest(t, execTestOpts{
-		args:     []string{"--force-refresh", "--role", "arn:aws:iam::675470192105:role/test_assume-role"},
-		testType: WITHOUT_MFA,
+		args:       []string{"--force-refresh", "--role", "arn:aws:iam::675470192105:role/test_assume-role"},
+		fixtureDir: fixtureDir,
+		testType:   WITHOUT_MFA,
 	})
 	require.Empty(t, b.Stderr.String())
 	require.Zero(t, b.ExitCode)
