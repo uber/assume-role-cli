@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-// Package assumerole contains main application logic
+// Package assumerole is a wrapper around AWS's sts:AssumeRole API call
+// to get temporary credentials and cache them locally in ~/.aws config files.
 package assumerole
 
 import (
@@ -46,8 +47,8 @@ type App struct {
 	stdinReader *bufio.Reader
 }
 
-// Parameters are the parameters for the AssumeRole call
-type Parameters struct {
+// AssumeRoleParameters are the parameters for the AssumeRole call
+type AssumeRoleParameters struct {
 	// UserRole is the ARN of the role to be assumed
 	UserRole string
 
@@ -55,7 +56,8 @@ type Parameters struct {
 	// the empty string, the current username will be used
 	RoleSessionName string
 
-	// Force refresh forces credential refresh
+	// When ForceRefresh is true, assumerole will bypass the local cache and do a
+	// call to sts:AssumeRole to retrieve fresh credentials.
 	ForceRefresh bool
 }
 
@@ -85,7 +87,7 @@ func NewApp(opts ...Option) (*App, error) {
 // AssumeRole takes a role name and calls AWS AssumeRole, returning a
 // set of temporary credentials. If MFA is required, it will prompt for
 // an MFA token interactively.
-func (app *App) AssumeRole(options Parameters) (*TemporaryCredentials, error) {
+func (app *App) AssumeRole(options AssumeRoleParameters) (*TemporaryCredentials, error) {
 	profileName, err := app.profileName(options.UserRole)
 	if err != nil {
 		return nil, err

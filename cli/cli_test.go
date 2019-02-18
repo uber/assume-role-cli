@@ -82,10 +82,10 @@ func copyFilesToTempDir(src string) (string, error) {
 	return filepath.Join(tmpdir, filepath.Base(src)), nil
 }
 
-func makeFixtureDir(t *testing.T) string {
+func makeFixtureDir(t *testing.T) (string, func()) {
 	fixtureDir, err := ioutil.TempDir("", "")
 	require.NoError(t, err)
-	return fixtureDir
+	return fixtureDir, func() { os.RemoveAll(fixtureDir) }
 }
 
 func execTest(t *testing.T, opts execTestOpts) *execResult {
@@ -110,9 +110,11 @@ func execTest(t *testing.T, opts execTestOpts) *execResult {
 	}
 
 	fixtureDir := opts.fixtureDir
+	var cleanup func()
 
 	if fixtureDir == "" {
-		fixtureDir = makeFixtureDir(t)
+		fixtureDir, cleanup = makeFixtureDir(t)
+		defer cleanup()
 	}
 
 	os.Setenv("AWS_CONFIG_FILE", filepath.Join(fixtureDir, "aws/config"))
@@ -221,7 +223,8 @@ func TestCredentialsCached(t *testing.T) {
 		t.Skip("skipping integration test due to -short flag")
 	}
 
-	fixtureDir := makeFixtureDir(t)
+	fixtureDir, cleanup := makeFixtureDir(t)
+	defer cleanup()
 
 	// Do the first AssumeRole
 	a := execTest(t, execTestOpts{
@@ -261,7 +264,8 @@ func TestCredentialsCachedForceRefresh(t *testing.T) {
 		t.Skip("skipping integration test due to -short flag")
 	}
 
-	fixtureDir := makeFixtureDir(t)
+	fixtureDir, cleanup := makeFixtureDir(t)
+	defer cleanup()
 
 	// Do the first AssumeRole
 	a := execTest(t, execTestOpts{

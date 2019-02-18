@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-// Package cli is reponsible for cli interaction
 package cli
 
 import (
@@ -67,6 +66,9 @@ func parseOptions(args argumentList) (*cliOpts, error) {
 ArgsLoop:
 	for len(args) > 0 {
 		switch arg := args.Next(); arg {
+
+		case "-f":
+			opts.forceRefresh = true
 
 		case "--force-refresh":
 			opts.forceRefresh = true

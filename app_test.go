@@ -124,7 +124,7 @@ func TestAssumeRoleWithMFAFirstTime(t *testing.T) {
 
 	test.MockStdin.WriteString("123456" + "\n")
 
-	creds, err := test.AssumeRoleMain.AssumeRole(assumerole.Parameters{
+	creds, err := test.AssumeRoleMain.AssumeRole(assumerole.AssumeRoleParameters{
 		UserRole: fooProfileWithMFA.RoleARN,
 	})
 	assert.NoError(t, err)
@@ -146,7 +146,7 @@ func TestErrorNoMFADevices(t *testing.T) {
 
 	test.MockStdin.WriteString("123456" + "\n")
 
-	creds, err := test.AssumeRoleMain.AssumeRole(assumerole.Parameters{
+	creds, err := test.AssumeRoleMain.AssumeRole(assumerole.AssumeRoleParameters{
 		UserRole: fooProfileWithMFA.RoleARN,
 	})
 	require.Error(t, err)
@@ -179,7 +179,7 @@ func TestMFAPromptInvalid(t *testing.T) {
 	test.MockStdin.WriteString("1\n")
 	test.MockStdin.WriteString("123456\n")
 
-	creds, err := test.AssumeRoleMain.AssumeRole(assumerole.Parameters{
+	creds, err := test.AssumeRoleMain.AssumeRole(assumerole.AssumeRoleParameters{
 		UserRole: "arn:aws:iam::000000000000:role/testRole",
 	})
 	require.NoError(t, err)
@@ -206,7 +206,7 @@ func TestAssumeRoleWithAssumedRoleSuccess(t *testing.T) {
 	test.MockAWSConfig.EXPECT().SetProfile("000000000000-testRole-fromassumedrole", fooProfileWithoutMFA).Return(nil)
 	test.MockAWSConfig.EXPECT().SetCredentials("000000000000-testRole-fromassumedrole", fooCredentials)
 
-	creds, err := test.AssumeRoleMain.AssumeRole(assumerole.Parameters{
+	creds, err := test.AssumeRoleMain.AssumeRole(assumerole.AssumeRoleParameters{
 		UserRole:        fooProfileWithoutMFA.RoleARN,
 		RoleSessionName: "bob-session",
 	})
@@ -222,7 +222,7 @@ func TestAssumeRoleWithAssumedRoleDoesNotTryMFA(t *testing.T) {
 
 	test.MockAWSConfig.EXPECT().GetProfile("000000000000-testRole-fromassumedrole").Return(nil, nil)
 
-	creds, err := test.AssumeRoleMain.AssumeRole(assumerole.Parameters{
+	creds, err := test.AssumeRoleMain.AssumeRole(assumerole.AssumeRoleParameters{
 		UserRole:        fooProfileWithoutMFA.RoleARN,
 		RoleSessionName: "bob-session",
 	})
@@ -248,7 +248,7 @@ func TestConfigRolePrefix(t *testing.T) {
 
 	test.MockStdin.WriteString("123456" + "\n")
 
-	creds, err := test.AssumeRoleMain.AssumeRole(assumerole.Parameters{
+	creds, err := test.AssumeRoleMain.AssumeRole(assumerole.AssumeRoleParameters{
 		UserRole: "testRole",
 	})
 	assert.NoError(t, err)
@@ -338,7 +338,7 @@ func TestCredentialsExpiry(t *testing.T) {
 			test.MockAWSConfig.EXPECT().GetCredentials(gomock.Any()).Return(mockCreds, nil)
 		}
 
-		creds, err := test.AssumeRoleMain.AssumeRole(assumerole.Parameters{
+		creds, err := test.AssumeRoleMain.AssumeRole(assumerole.AssumeRoleParameters{
 			ForceRefresh: tt.forceRefresh,
 			UserRole:     "arn:aws:iam::123:role/testRole",
 		})

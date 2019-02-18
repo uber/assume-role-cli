@@ -83,7 +83,7 @@ Usage:
 
 Options:
       --help                       Help for assume-role
-	  --force-refresh              Forces credentials refresh irrespective of their expiry
+      -f, --force-refresh          Forces credentials refresh irrespective of their expiry
       --role string                Name of the role to assume
       --role-session-name string   Name of the session for the assumed role
 `)
@@ -114,7 +114,7 @@ func Main(stdin io.Reader, stdout io.Writer, stderr io.Writer, args []string) (e
 		return 1
 	}
 
-	credentials, err := app.AssumeRole(assumerole.Parameters{
+	credentials, err := app.AssumeRole(assumerole.AssumeRoleParameters{
 		ForceRefresh:    userOpts.forceRefresh,
 		UserRole:        userOpts.role,
 		RoleSessionName: userOpts.roleSessionName,
