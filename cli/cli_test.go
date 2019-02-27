@@ -59,7 +59,7 @@ type execTestOpts struct {
 	// with or without MFA
 	testType testType
 	// if not passed in, create a new one
-	fixtureDir string
+	tempDir string
 }
 
 type execResult struct {
@@ -82,10 +82,10 @@ func copyFilesToTempDir(src string) (string, error) {
 	return filepath.Join(tmpdir, filepath.Base(src)), nil
 }
 
-func makeFixtureDir(t *testing.T) (string, func()) {
-	fixtureDir, err := ioutil.TempDir("", "")
+func makeTempDir(t *testing.T) (tempDir string, cleanupFunc func()) {
+	tempDir, err := ioutil.TempDir("", "")
 	require.NoError(t, err)
-	return fixtureDir, func() { os.RemoveAll(fixtureDir) }
+	return tempDir, func() { os.RemoveAll(tempDir) }
 }
 
 func execTest(t *testing.T, opts execTestOpts) *execResult {
@@ -109,16 +109,16 @@ func execTest(t *testing.T, opts execTestOpts) *execResult {
 		os.Setenv(key, val)
 	}
 
-	fixtureDir := opts.fixtureDir
+	tempDir := opts.tempDir
 	var cleanup func()
 
-	if fixtureDir == "" {
-		fixtureDir, cleanup = makeFixtureDir(t)
+	if tempDir == "" {
+		tempDir, cleanup = makeTempDir(t)
 		defer cleanup()
 	}
 
-	os.Setenv("AWS_CONFIG_FILE", filepath.Join(fixtureDir, "aws/config"))
-	os.Setenv("AWS_SHARED_CREDENTIALS_FILE", filepath.Join(fixtureDir, "aws/credentials"))
+	os.Setenv("AWS_CONFIG_FILE", filepath.Join(tempDir, "aws/config"))
+	os.Setenv("AWS_SHARED_CREDENTIALS_FILE", filepath.Join(tempDir, "aws/credentials"))
 
 	stdin := bytes.NewBufferString(opts.input)
 
@@ -126,7 +126,7 @@ func execTest(t *testing.T, opts execTestOpts) *execResult {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 
-	err = os.Chdir(fixtureDir)
+	err = os.Chdir(tempDir)
 	require.NoError(t, err)
 
 	defer os.Chdir(cwd)
@@ -218,45 +218,63 @@ func TestAssumeRoleWithMFA(t *testing.T) {
 	assert.Zero(t, result.ExitCode)
 }
 
+func TestCredentialsWrittenToFile(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test due to -short flag")
+	}
+
+	tempDir, cleanup := makeTempDir(t)
+	defer cleanup()
+
+	result := execTest(t, execTestOpts{
+		args:     []string{"--role", "arn:aws:iam::675470192105:role/test_assume-role"},
+		tempDir:  tempDir,
+		testType: WITHOUT_MFA,
+	})
+
+	assert.Regexp(t, "^AWS_ACCESS_KEY_ID=.*\nAWS_SECRET_ACCESS_KEY=.*\nAWS_SESSION_TOKEN=.*\n$", result.Stdout.String())
+	assert.Empty(t, result.Stderr.String())
+	assert.Zero(t, result.ExitCode)
+
+	writtenCredentialFile, err := os.Stat(filepath.Join(tempDir, "aws/credentials"))
+	require.NoError(t, err)
+
+	writtenConfigFile, err := os.Stat(filepath.Join(tempDir, "aws/config"))
+	require.NoError(t, err)
+
+	// Config/credential files should have been written to
+	assert.NotZero(t, writtenConfigFile.Size())
+	assert.NotZero(t, writtenCredentialFile.Size())
+}
+
 func TestCredentialsCached(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test due to -short flag")
 	}
 
-	fixtureDir, cleanup := makeFixtureDir(t)
+	tempDir, cleanup := makeTempDir(t)
 	defer cleanup()
 
 	// Do the first AssumeRole
 	a := execTest(t, execTestOpts{
-		args:       []string{"--role", "arn:aws:iam::675470192105:role/test_assume-role"},
-		fixtureDir: fixtureDir,
-		testType:   WITHOUT_MFA,
+		args:     []string{"--role", "arn:aws:iam::675470192105:role/test_assume-role"},
+		tempDir:  tempDir,
+		testType: WITHOUT_MFA,
 	})
 	require.Empty(t, a.Stderr.String())
 	require.Zero(t, a.ExitCode)
 
 	// Do the second AssumeRole
 	b := execTest(t, execTestOpts{
-		args:       []string{"--role", "arn:aws:iam::675470192105:role/test_assume-role"},
-		fixtureDir: fixtureDir,
-		testType:   WITHOUT_MFA,
+		args:     []string{"--role", "arn:aws:iam::675470192105:role/test_assume-role"},
+		tempDir:  tempDir,
+		testType: WITHOUT_MFA,
 	})
 	require.Empty(t, b.Stderr.String())
 	require.Zero(t, b.ExitCode)
 
 	// Credentials should match because they were cached the first time
 	assert.Equal(t, a.Stdout.String(), b.Stdout.String())
-
-	writtenCredentialFile, err := os.Stat(filepath.Join(fixtureDir, "aws/credentials"))
-	require.NoError(t, err)
-
-	writtenConfigFile, err := os.Stat(filepath.Join(fixtureDir, "aws/config"))
-	require.NoError(t, err)
-
-	// Config/credential files should have been written to
-	assert.NotZero(t, writtenConfigFile.Size())
-	assert.NotZero(t, writtenCredentialFile.Size())
-
 }
 
 func TestCredentialsCachedForceRefresh(t *testing.T) {
@@ -264,39 +282,29 @@ func TestCredentialsCachedForceRefresh(t *testing.T) {
 		t.Skip("skipping integration test due to -short flag")
 	}
 
-	fixtureDir, cleanup := makeFixtureDir(t)
+	tempDir, cleanup := makeTempDir(t)
 	defer cleanup()
 
 	// Do the first AssumeRole
 	a := execTest(t, execTestOpts{
-		args:       []string{"--role", "arn:aws:iam::675470192105:role/test_assume-role"},
-		fixtureDir: fixtureDir,
-		testType:   WITHOUT_MFA,
+		args:     []string{"--role", "arn:aws:iam::675470192105:role/test_assume-role"},
+		tempDir:  tempDir,
+		testType: WITHOUT_MFA,
 	})
 	require.Empty(t, a.Stderr.String())
 	require.Zero(t, a.ExitCode)
 
 	// Do the second AssumeRole
 	b := execTest(t, execTestOpts{
-		args:       []string{"--force-refresh", "--role", "arn:aws:iam::675470192105:role/test_assume-role"},
-		fixtureDir: fixtureDir,
-		testType:   WITHOUT_MFA,
+		args:     []string{"--force-refresh", "--role", "arn:aws:iam::675470192105:role/test_assume-role"},
+		tempDir:  tempDir,
+		testType: WITHOUT_MFA,
 	})
 	require.Empty(t, b.Stderr.String())
 	require.Zero(t, b.ExitCode)
 
 	// Credentials not match because they were force refreshed
 	assert.NotEqual(t, a.Stdout.String(), b.Stdout.String())
-
-	writtenCredentialFile, err := os.Stat(filepath.Join(fixtureDir, "aws/credentials"))
-	require.NoError(t, err)
-
-	writtenConfigFile, err := os.Stat(filepath.Join(fixtureDir, "aws/config"))
-	require.NoError(t, err)
-
-	// Config/credential files should have been written to
-	assert.NotZero(t, writtenConfigFile.Size())
-	assert.NotZero(t, writtenCredentialFile.Size())
 }
 
 func TestConfig(t *testing.T) {
@@ -304,14 +312,14 @@ func TestConfig(t *testing.T) {
 		t.Skip("skipping integration test due to -short flag")
 	}
 
-	fixtureDir, err := copyFilesToTempDir("fixtures/test-config")
+	tempDir, err := copyFilesToTempDir("fixtures/test-config")
 	require.NoError(t, err)
-	defer os.RemoveAll(fixtureDir)
+	defer os.RemoveAll(tempDir)
 
 	result := execTest(t, execTestOpts{
-		args:       []string{"--role", "test_assume-role"},
-		fixtureDir: fixtureDir,
-		testType:   WITHOUT_MFA,
+		args:     []string{"--role", "test_assume-role"},
+		tempDir:  tempDir,
+		testType: WITHOUT_MFA,
 	})
 	assert.Empty(t, result.Stderr.String())
 	assert.Zero(t, result.ExitCode)
