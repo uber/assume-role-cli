@@ -266,6 +266,7 @@ func TestCredentialsExpiry(t *testing.T) {
 	tests := []struct {
 		credentialExpiry time.Time
 		expectRefresh    bool
+		forceRefresh     bool
 	}{
 		{
 			// credentials are expiring exactly now
@@ -290,9 +291,22 @@ func TestCredentialsExpiry(t *testing.T) {
 			expectRefresh:    false,
 		},
 		{
+			// expiring in 10m (still valid), but force refresh
+			credentialExpiry: mockNow.Add(10 * time.Minute),
+			expectRefresh:    true,
+			forceRefresh:     true,
+		},
+		{
 			// expired 20m ago
 			credentialExpiry: mockNow.Add(-20 * time.Minute),
 			expectRefresh:    true,
+		},
+		{
+			// expired 20m ago
+			// check if force refresh doesn't mess up refreshing with expired creds
+			credentialExpiry: mockNow.Add(-20 * time.Minute),
+			expectRefresh:    true,
+			forceRefresh:     true,
 		},
 	}
 
@@ -325,7 +339,8 @@ func TestCredentialsExpiry(t *testing.T) {
 		}
 
 		creds, err := test.AssumeRoleMain.AssumeRole(assumerole.AssumeRoleParameters{
-			UserRole: "arn:aws:iam::123:role/testRole",
+			ForceRefresh: tt.forceRefresh,
+			UserRole:     "arn:aws:iam::123:role/testRole",
 		})
 		assert.NoError(t, err)
 		assert.Equal(t, mockCreds, creds)

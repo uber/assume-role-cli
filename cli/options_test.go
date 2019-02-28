@@ -52,3 +52,21 @@ func TestParseOptionsNoRole(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, errNoRole, err)
 }
+
+func TestParseOptionsForceRefresh(t *testing.T) {
+	cliOpts, err := parseOptions([]string{"--role", testRole, "--force-refresh", "ls", "-l"})
+	assert.NoError(t, err)
+	assert.Equal(t, testRole, cliOpts.role)
+	assert.Equal(t, "", cliOpts.roleSessionName)
+	assert.Equal(t, true, cliOpts.forceRefresh)
+	assert.Equal(t, []string{"ls", "-l"}, cliOpts.args)
+}
+
+func TestParseOptionsForceRefreshShort(t *testing.T) {
+	cliOpts, err := parseOptions([]string{"--role", testRole, "-f", "ls", "-l"})
+	assert.NoError(t, err)
+	assert.Equal(t, testRole, cliOpts.role)
+	assert.Equal(t, "", cliOpts.roleSessionName)
+	assert.Equal(t, true, cliOpts.forceRefresh)
+	assert.Equal(t, []string{"ls", "-l"}, cliOpts.args)
+}

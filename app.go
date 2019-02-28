@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// Package assumerole is a wrapper around AWS's sts:AssumeRole API call
+// to get temporary credentials and cache them locally in ~/.aws config files.
 package assumerole
 
 import (
@@ -52,6 +55,10 @@ type AssumeRoleParameters struct {
 	// RoleSessionName is the session name for the AWS AssumeRole call; if it is
 	// the empty string, the current username will be used
 	RoleSessionName string
+
+	// When ForceRefresh is true, assumerole will bypass the local cache and do a
+	// call to sts:AssumeRole to retrieve fresh credentials.
+	ForceRefresh bool
 }
 
 // used here and in tests
@@ -99,9 +106,9 @@ func (app *App) AssumeRole(options AssumeRoleParameters) (*TemporaryCredentials,
 		return nil, fmt.Errorf("unable to check IAM principal type: %v", err)
 	}
 
-	// If the credentials from a previous session are still valid,
-	// return those
-	if !app.credentialsExpired(profile.Expires) {
+	// If force refresh was requested, or the credentials from a previous session
+	// are still valid return those
+	if !app.credentialsExpired(profile.Expires) && !options.ForceRefresh {
 		return app.awsConfig.GetCredentials(profileName)
 	}
 
