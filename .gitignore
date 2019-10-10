@@ -4,5 +4,6 @@
 *.xml
 .coverage.out
 .tmp/
-/assume-role
-/vendor
+assume-role
+vendor/
+dist/
