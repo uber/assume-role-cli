@@ -82,10 +82,11 @@ Usage:
   assume-role [options] <command> [args ...]
 
 Options:
-      --help                       Help for assume-role
+      -h, --help                   Help for assume-role
       -f, --force-refresh          Forces credentials refresh irrespective of their expiry
       --role string                Name of the role to assume
       --role-session-name string   Name of the session for the assumed role
+      --version                    Print the version of assume-role-cli
 `)
 }
 
@@ -97,9 +98,14 @@ func printVars(vars []string, out io.Writer) {
 
 // Main is the main entry point into the CLI program.
 func Main(stdin io.Reader, stdout io.Writer, stderr io.Writer, args []string) (exitCode int) {
-	if len(args) == 1 && (args[0] == "-h" || args[0] == "--help") {
-		printHelp(stdout)
-		return 0
+	if len(args) == 1 {
+		if args[0] == "-h" || args[0] == "--help" {
+			printHelp(stdout)
+			return 0
+		} else if args[0] == "--version" {
+			printVersion(stdout)
+			return 0
+		}
 	}
 
 	app, err := loadApp(stdin, stdout, stderr)

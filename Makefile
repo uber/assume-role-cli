@@ -27,7 +27,10 @@ clean-mocks:
 	rm mocks/*.go
 
 assume-role: vendor $(source_files)
-	go build -o assume-role ./cli/assume-role/main.go
+	go build \
+		-o assume-role \
+		-ldflags "-X github.com/uber/assume-role-cli/cli.date=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)" \
+		./cli/assume-role/main.go
 
 .PHONY:
 lint: lint-license
