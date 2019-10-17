@@ -59,4 +59,4 @@ test: vendor
 	go test -short -coverprofile=.coverage.out ./...
 
 vendor:
-	dep ensure
+	go mod vendor
