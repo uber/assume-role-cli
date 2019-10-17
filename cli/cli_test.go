@@ -324,3 +324,48 @@ func TestConfig(t *testing.T) {
 	assert.Empty(t, result.Stderr.String())
 	assert.Zero(t, result.ExitCode)
 }
+
+func TestVersion(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	exitCode := cli.Main(os.Stdin, stdout, stderr, []string{"--version"})
+
+	assert.Empty(t, stderr.String())
+	assert.Contains(t, stdout.String(), "assume-role version dev")
+	assert.Zero(t, exitCode)
+}
+
+func TestVersionWithLdflags(t *testing.T) {
+	binary, err := ioutil.TempFile("", "")
+	defer os.Remove(binary.Name())
+	require.NoError(t, err)
+
+	compiler := exec.Command("go",
+		"build",
+		"-o",
+		binary.Name(),
+		"-ldflags",
+		"-X github.com/uber/assume-role-cli/cli.version=1.2.3 "+
+			"-X github.com/uber/assume-role-cli/cli.commit=ab123 "+
+			"-X github.com/uber/assume-role-cli/cli.date=2019-01-01T10:00:00",
+		"github.com/uber/assume-role-cli/cli/assume-role",
+	)
+
+	err = compiler.Run()
+	require.NoError(t, err)
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	cmd := exec.Command(binary.Name(), "--version")
+
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+
+	err = cmd.Run()
+	require.NoError(t, err)
+
+	assert.Empty(t, stderr.String())
+	assert.Equal(t, "assume-role version 1.2.3 (ab123) built 2019-01-01T10:00:00\n", stdout.String())
+}
