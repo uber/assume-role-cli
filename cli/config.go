@@ -55,7 +55,7 @@ func findConfigFile() (string, error) {
 
 	userConfigFile := filepath.Join(home, userPath, configFile)
 	if fileExists(userConfigFile) {
-		return configFile, nil
+		return userConfigFile, nil
 	}
 
 	systemConfigFile := filepath.Join(systemPath, configFile)
