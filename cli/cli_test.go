@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"testing"
 
@@ -101,14 +102,16 @@ func execTest(t *testing.T, opts execTestOpts) *execResult {
 	defer os.Setenv("AWS_SHARED_CREDENTIALS_FILE", oldAWSSharedCredsEnv)
 
 	// Set additional env vars
-	env, err := readSecretCredentialsFromEnv(string(opts.testType))
-	require.NoError(t, err)
+	if opts.testType != "" {
+		env, err := readSecretCredentialsFromEnv(string(opts.testType))
+		require.NoError(t, err)
 
-	for key, val := range env {
-		oldValue := os.Getenv(key)
-		defer os.Setenv(key, oldValue)
+		for key, val := range env {
+			oldValue := os.Getenv(key)
+			defer os.Setenv(key, oldValue)
 
-		os.Setenv(key, val)
+			os.Setenv(key, val)
+		}
 	}
 
 	tempDir := opts.tempDir
@@ -327,60 +330,65 @@ func TestConfig(t *testing.T) {
 	assert.Zero(t, result.ExitCode)
 }
 
-func TestUserConfig(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test due to -short flag")
-	}
+func TestConfigLoading(t *testing.T) {
+	// 1. Create working directory, with local config file
+	localConfigDir, err := copyFilesToTempDir("fixtures/test-config-local")
+	require.NoError(t, err)
+	defer os.RemoveAll(localConfigDir)
 
-	// Validate if AWS home directory exists
+	// 2. Create dummy home dir
+	tmpHomeDir, cleanup := makeTempDir(t)
+	defer cleanup()
+
+	// Copy user config file there
+	userAwsDir := path.Join(tmpHomeDir, ".aws")
+	require.NoError(t, os.MkdirAll(userAwsDir, 0755))
+	require.NoError(t, exec.Command("cp", "fixtures/test-config-user/assume-role.yaml", userAwsDir).Run())
+
+	// Set $HOME to dummy dir
+	oldHome := os.Getenv("HOME")
+	defer os.Setenv("HOME", oldHome)
+	require.NoError(t, os.Setenv("HOME", tmpHomeDir))
+
+	// Fetch home dir for sanity check
 	home, err := homedir.Dir()
 	require.NoError(t, err)
+	require.Equal(t, home, tmpHomeDir)
 
-	configHome := filepath.Join(home, ".aws")
-	if _, err := os.Stat(configHome); os.IsNotExist(err) {
-		// Create the dir for test
-		err := exec.Command("mkdir", "-p", configHome).Run()
-		require.NoError(t, err)
-		defer exec.Command("rm", "-r", configHome)
+	// 3. Create dummy global config dir, with global config
+	globalConfigDir, err := copyFilesToTempDir("fixtures/test-config-global")
+	require.NoError(t, err)
+	defer os.RemoveAll(globalConfigDir)
+
+	// Set $ASSUME_ROLE_GLOBAL_CONFIG_PATH to dummy dir
+	oldGlobalConfigPath := os.Getenv("ASSUME_ROLE_GLOBAL_CONFIG_PATH")
+	defer os.Setenv("ASSUME_ROLE_GLOBAL_CONFIG_PATH", oldGlobalConfigPath)
+	require.NoError(t, os.Setenv("ASSUME_ROLE_GLOBAL_CONFIG_PATH", globalConfigDir))
+
+	testFn := func() *execResult {
+		return execTest(t, execTestOpts{
+			args:    []string{"--role", "test_assume-role"},
+			tempDir: localConfigDir,
+		})
 	}
 
-	// Copy astro config to user config directory (~/.aws)
-	err = exec.Command("cp", "../fixtures/test-config-roleprefix/assume-role.yaml", configHome).Run()
-	require.NoError(t, err)
-	defer exec.Command("rm", filepath.Join(configHome, "assume-role.yaml"))
+	var result *execResult
 
-	// Run Astro from a temp directory NOT containing config file
-	tempDir, cleanup := makeTempDir(t)
-	defer cleanup()
+	// Test that local config is used
+	result = testFn()
+	assert.Contains(t, result.Stderr.String(), "test-config-local")
 
-	result := execTest(t, execTestOpts{
-		args:     []string{"--role", "test_assume-role"},
-		tempDir:  tempDir,
-		testType: WITHOUT_MFA,
-	})
-	assert.Empty(t, result.Stderr.String())
-	assert.Zero(t, result.ExitCode)
-}
+	// Remove local config file
+	os.Remove(path.Join(localConfigDir, "assume-role.yaml"))
 
-func TestGlobalConfig(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test due to -short flag")
-	}
+	// Test that user config is used
+	result = testFn()
+	assert.Contains(t, result.Stderr.String(), "test-config-user")
 
-	// Copy astro config to global config path (/etc)
-	err := exec.Command("sudo", "cp", "../fixtures/test-config-roleprefix/assume-role.yaml", "/etc/").Run()
-	require.NoError(t, err)
-	defer exec.Command("sudo", "rm", "/etc/assume-role.yaml")
+	// Remove user config file
+	os.Remove(path.Join(tmpHomeDir, ".aws", "assume-role.yaml"))
 
-	// Run Astro from a temp directory NOT containing the config file
-	tempDir, cleanup := makeTempDir(t)
-	defer cleanup()
-
-	result := execTest(t, execTestOpts{
-		args:     []string{"--role", "test_assume-role"},
-		tempDir:  tempDir,
-		testType: WITHOUT_MFA,
-	})
-	assert.Empty(t, result.Stderr.String())
-	assert.Zero(t, result.ExitCode)
+	// Test that global config is used
+	result = testFn()
+	assert.Contains(t, result.Stderr.String(), "test-config-global")
 }

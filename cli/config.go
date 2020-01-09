@@ -24,7 +24,7 @@ import (
 
 const configFile = "assume-role.yaml"
 const userPath = ".aws"
-const systemPath = "/etc"
+const defaultSystemPath = "/etc"
 
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
@@ -39,6 +39,11 @@ func findConfigFile() (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return "", err
+	}
+
+	systemPath := os.Getenv("ASSUME_ROLE_GLOBAL_CONFIG_PATH")
+	if systemPath == "" {
+		systemPath = defaultSystemPath
 	}
 
 	for _, path := range searchPaths(wd) {
@@ -78,5 +83,4 @@ func searchPaths(basePath string) (paths []string) {
 	paths = append(paths, "/")
 
 	return paths
-
 }
