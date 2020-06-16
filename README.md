@@ -68,7 +68,7 @@ To see other useful configuration, see *Configuration options* below.
 You can install assume-role using go get:
 
 ```
-go get -u github.com/uber/assume-role-cli
+go get -u github.com/uber/assume-role-cli/cli/assume-role
 ```
 
 Now, run a command:
