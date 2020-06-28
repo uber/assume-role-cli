@@ -16,11 +16,17 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/uber/assume-role-cli/cli"
 )
 
 func main() {
-	os.Exit(cli.Main(os.Stdin, os.Stdout, os.Stderr, os.Args[1:]))
+	tty, err := os.Open("/dev/tty")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
+		os.Exit(1)
+	}
+	os.Exit(cli.Main(tty, os.Stdout, os.Stderr, os.Args[1:]))
 }
