@@ -45,12 +45,14 @@ var fooProfileWithMFA = &assumerole.ProfileConfiguration{
 	MFASerial:       "arn:aws:iam::000000000000:mfa/bob",
 	RoleARN:         "arn:aws:iam::000000000000:role/testRole",
 	RoleSessionName: "bob",
+	SourceProfile:   "default",
 }
 
 var fooProfileWithoutMFA = &assumerole.ProfileConfiguration{
 	Expires:         fooCredentials.Expires,
 	RoleARN:         "arn:aws:iam::000000000000:role/testRole-fromassumedrole",
 	RoleSessionName: "bob-session",
+	SourceProfile:   "default",
 }
 
 type test struct {

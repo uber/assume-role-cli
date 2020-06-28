@@ -101,6 +101,11 @@ func (app *App) AssumeRole(options AssumeRoleParameters) (*TemporaryCredentials,
 		profile = &ProfileConfiguration{}
 	}
 
+	profile.SourceProfile = os.Getenv("AWS_PROFILE")
+	if profile.SourceProfile == "" {
+		profile.SourceProfile = "default"
+	}
+
 	currentPrincipalIsAssumedRole, err := app.CurrentPrincipalIsAssumedRole()
 	if err != nil {
 		return nil, fmt.Errorf("unable to check IAM principal type: %v", err)
