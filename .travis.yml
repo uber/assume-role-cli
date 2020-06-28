@@ -5,9 +5,12 @@ install:
 - make vendor
 cache:
 - vendor
+before_script:
+- "curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | sudo bash"
 script:
 - make lint
 - ./run-tests.sh
+- fossa
 env:
   global:
   - secure: MTgowTKGnUpre8ZL4oBcBtU0dRp3ntBET3u9XoLOby6PQ6mPn3GTDhb/drSVC0n70MBY/+i7zsUMYESHBZSFMP4KPYBOP5miTXZ8ujl65BaXW3Z5kyi+nCuxNQS1jaFYH3a46YbOrEtkc/q2PRvy8+oCx7sj1cpFDv11sTN5T6an0YtOJgYtu+QCK5IuNziGn35ZVhZS116KcOfvoN6LacwWrXGzDbbzPYrty7kjPRKWe0A9EiaUIvQdqcQ6Syfq99lfP3YFamXdqFRGE/ardwGfbjR+Lsv9pP3ACP3uPLDVEsGBO0doIvGT/00ZHfQaQQ24YKMF2an89RGJMmolmAbNkkSo0dUAJIhx5SUGQkS1ysMFPyVNOebN5B7xYce9xyFjuN8Ch8MK8rBbsXuNYDUkIt9u5Ir0B/uYExamHSb7ok2Y+h533ZEkFthWrCI31v7zK5o+6CJe4xMDE7A21GcQiBqbISOzde+6WOiLg89FS7pIYcdP6o/e6entAxU9CVx1VcH3fwQ5fmFPiL030BoVJUuecS9tjTX7eMFGbLgRGq/rtDysaZ5Z79ZSsQuFO9rAMa5cC52bOTlojzjSroLdQxfBy/16ICqFJY9z+s7v+Y5TBNgtpaiI6s/5wBN+vDJFKI4itAZr5iaqfMWbMLF4gYmKavbke/MoelocXSw=
