@@ -30,6 +30,8 @@ import (
 	"github.com/hgfischer/go-otp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	homedir "github.com/mitchellh/go-homedir"
 )
 
 type testType string
@@ -315,6 +317,64 @@ func TestConfig(t *testing.T) {
 	tempDir, err := copyFilesToTempDir("fixtures/test-config")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
+
+	result := execTest(t, execTestOpts{
+		args:     []string{"--role", "test_assume-role"},
+		tempDir:  tempDir,
+		testType: WITHOUT_MFA,
+	})
+	assert.Empty(t, result.Stderr.String())
+	assert.Zero(t, result.ExitCode)
+}
+
+func TestUserConfig(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test due to -short flag")
+	}
+
+	// Validate if AWS home directory exists
+	home, err := homedir.Dir()
+	require.NoError(t, err)
+
+	configHome := filepath.Join(home, ".aws")
+	if _, err := os.Stat(configHome); os.IsNotExist(err) {
+		// Create the dir for test
+		err := exec.Command("mkdir", "-p", configHome).Run()
+		require.NoError(t, err)
+		defer exec.Command("rm", "-r", configHome)
+	}
+
+	// Copy astro config to user config directory (~/.aws)
+	err = exec.Command("cp", "../fixtures/test-config-roleprefix/assume-role.yaml", configHome).Run()
+	require.NoError(t, err)
+	defer exec.Command("rm", filepath.Join(configHome, "assume-role.yaml"))
+
+	// Run Astro from a temp directory NOT containing config file
+	tempDir, cleanup := makeTempDir(t)
+	defer cleanup()
+
+	result := execTest(t, execTestOpts{
+		args:     []string{"--role", "test_assume-role"},
+		tempDir:  tempDir,
+		testType: WITHOUT_MFA,
+	})
+	assert.Empty(t, result.Stderr.String())
+	assert.Zero(t, result.ExitCode)
+}
+
+func TestGlobalConfig(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test due to -short flag")
+	}
+
+	// Copy astro config to global config path (/etc)
+	err := exec.Command("sudo", "cp", "../fixtures/test-config-roleprefix/assume-role.yaml", "/etc/").Run()
+	require.NoError(t, err)
+	defer exec.Command("sudo", "rm", "/etc/assume-role.yaml")
+
+	// Run Astro from a temp directory NOT containing the config file
+	tempDir, cleanup := makeTempDir(t)
+	defer cleanup()
 
 	result := execTest(t, execTestOpts{
 		args:     []string{"--role", "test_assume-role"},
