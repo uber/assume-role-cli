@@ -1,12 +1,19 @@
 project_name: assume-role
+archive:
+  format_overrides:
+    - goos: darwin
+      format: zip
+  replacements:
+    amd64: 64-bit
+    386: 32-bit
+    darwin: macOS
 before:
   hooks:
     - go mod tidy
-    - go mod vendor
-    # you may remove this if you don't need go generate
-    - go generate ./...
+    - go mod download
 builds:
   - env:
+      - GO111MODULE=on
       - CGO_ENABLED=0
     # Path to main.go file or main package.
     main: ./cli/assume-role/main.go
@@ -25,6 +32,8 @@ builds:
     # Defaults are 386 and amd64.
     goarch:
       - amd64
+    ldflags:
+      - -s -w -X github.com/uber/assume-role-cli/cli.version={{.Version}} -X github.com/uber/assume-role-cli/cli.commit={{.ShortCommit}} -X github.com/uber/assume-role-cli/cli.date={{.Date}}
 checksum:
   name_template: 'checksums.txt'
 snapshot:
