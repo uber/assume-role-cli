@@ -290,7 +290,7 @@ func (app *App) profileName(userRole string) (string, error) {
 	}
 
 	if app.config.ProfileNameCustom != "" {
-		return app.config.ProfileNameCustom
+		return app.config.ProfileNameCustom, nil
 	} else if app.config.ProfileNamePrefix != "" {
 		profileNamePrefix = app.config.ProfileNamePrefix
 	} else {
