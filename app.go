@@ -289,7 +289,9 @@ func (app *App) profileName(userRole string) (string, error) {
 		return "", err
 	}
 
-	if app.config.ProfileNamePrefix != "" {
+	if app.config.ProfileNameCustom != "" {
+		return app.config.ProfileNameCustom
+	} else if app.config.ProfileNamePrefix != "" {
 		profileNamePrefix = app.config.ProfileNamePrefix
 	} else {
 		profileNamePrefix = parsedARN.AccountID

@@ -39,6 +39,10 @@ type Config struct {
 	// ProfileNamePrefix is a prefix that will prepended to the role name to
 	// create the profile name under which the AWS configuration will be saved.
 	ProfileNamePrefix string `json:"profile_name_prefix"`
+
+	// ProfileNameCustom is a custom role name to
+	// create the profile name under which the AWS configuration will be saved.
+	ProfileNameCustom string `json:"profile_name_custom"`
 }
 
 // SetDefaults sets any default values for unset variables.
